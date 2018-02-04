@@ -6,6 +6,7 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.physics.box2d.*;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.utils.Array;
 import com.runner.game.actors.*;
 import com.runner.game.utils.BodyUtils;
 import com.runner.game.utils.WorldUtils;
@@ -51,6 +52,12 @@ public class GameStage extends Stage implements ContactListener{
         world.setContactListener(this);
         setUpGround();
         setUpRunner();
+        createEnemy();
+    }
+
+    private void createEnemy() {
+        Enemy enemy = new Enemy(WorldUtils.createEnemy(world));
+        addActor(enemy);
     }
 
     private void setUpRunner() {
@@ -73,11 +80,27 @@ public class GameStage extends Stage implements ContactListener{
     public void act(float delta) {
         super.act(delta);
 
+        Array<Body> bodies = new Array<Body>(world.getBodyCount());
+        world.getBodies(bodies);
+
+        for (Body body : bodies){
+            update(body);
+        }
+
         accumulator += delta;
 
         while(accumulator >= delta){
             world.step(TIME_STEP, 6, 2);
             accumulator -= TIME_STEP;
+        }
+    }
+
+    private void update(Body body){
+        if(!BodyUtils.bodyInBounds(body)){
+            if(BodyUtils.isBodyEnemy(body) && !runner.isHit()){
+                createEnemy();
+            }
+            world.destroyBody(body);
         }
     }
 
@@ -128,6 +151,9 @@ public class GameStage extends Stage implements ContactListener{
         if((BodyUtils.isBodyRunner(a) && BodyUtils.isBodyGround(b)) ||
                    (BodyUtils.isBodyGround(a) && BodyUtils.isBodyRunner(b))){
             runner.landed();
+        } else if((BodyUtils.isBodyEnemy(a) && BodyUtils.isBodyRunner(b)) ||
+                (BodyUtils.isBodyEnemy(b) && BodyUtils.isBodyRunner(a))){
+            runner.hit();
         }
     }
 
